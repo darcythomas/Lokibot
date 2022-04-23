@@ -1,0 +1,1 @@
+& "$PSScriptRoot\src\generateScripts\create.ps1"
