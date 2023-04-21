@@ -1,17 +1,18 @@
 param (
-
-    [Parameter(Mandatory)]
-    # [ValidateScript({
-    #     if( -Not ($_ | Test-Path) ){
-    #         throw "File or folder does not exist"
-    #     }
-    #     return $true
-    # })]
-    [System.IO.FileInfo]$path
-    )
+  [Parameter(Mandatory)]
+  [System.IO.FileInfo]$path
+)
 
 
- 
-Remove-Item $path -Recurse
+if ( -Not ($path | Test-Path) ) {
+  Write-Host "File or folder does not exist"
+}
+else {
+  Remove-Item $path -Recurse -Force
+  Write-Host "Cleaned: " + $path
 
-mkdir $path
+}
+
+mkdir $path -Force
+
+Write-Host "Created: " + $path
