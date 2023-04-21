@@ -2,61 +2,46 @@
 
 param (
 
-    [Parameter(Mandatory)]
-    [ValidateScript({
-        if( -Not ($_ | Test-Path) ){
-            throw "File or folder does not exist"
-        }
-        return $true
+  [Parameter(Mandatory)]
+  [ValidateScript({
+      if ( -Not ($_ | Test-Path) ) {
+        throw "File or folder does not exist"
+      }
+      return $true
     })]
-    [System.IO.FileInfo]
-    $path
-    )
+  [System.IO.FileInfo]
+  $path,
+
+  [Parameter(Mandatory)]
+  [ValidateScript({
+      if ( [string]::IsNullOrEmpty( $_ ) ) {
+        throw "Name is blank"
+      }
+      return $true
+    })]
+  [System.String]
+  $name
+)
 
     
-$name = "Coffee"
-$author = "Darcy"
 
-
-
-function Setup-Template {
-   
-$templateJson = @"
-    {
-        "`$schema": "http://json.schemastore.org/template",
-        "author": "$author",
-        "classifications": [ "Common", "Code" ],
-        "identity": "ExampleTemplate.StringExtensions",
-        "name": "Example templates: string extensions",
-        "shortName": "$name",
-        "tags": {
-          "language": "C#",
-          "type": "item"
-        }
-    }
-"@
-    
-    $folder =  ".template.config";
-    mkdir $folder
-    $templateJson | Out-File "$path\$folder\template.json"
-       
-}
+$projects = @()
 
 
 
 function Create-Tests {
 
-    $folder =  "tests";
-    dotnet new xunit -o "$path$folder\unit" --name "$name.UnitTests"
-    dotnet new xunit -o "$path$folder\intergration" --name "$name.IntergrationTests"
-    dotnet new console -o "$path$folder\performance" --name "$name.PerformanceTests"
+  $folder = "tests";
+  dotnet new xunit -o "$path$folder\unit" --name "$name.UnitTests"
+  dotnet new xunit -o "$path$folder\intergration" --name "$name.IntergrationTests"
+  dotnet new console -o "$path$folder\performance" --name "$name.PerformanceTests"
 
-    Push-Location
-    Set-Location "$path$folder\performance"
+  Push-Location
+  Set-Location "$path$folder\performance"
     
-    dotnet add package  BenchmarkDotNet 
+  dotnet add package  BenchmarkDotNet 
 
-$basicBenchMarkCode = @"
+  $basicBenchMarkCode = @"
  
 using System.Security.Cryptography;
 using BenchmarkDotNet.Attributes;
@@ -88,89 +73,99 @@ public class Md5VsSha256
 "@
 
 
-$basicBenchMarkCode | Out-File "Program.cs"
+  $basicBenchMarkCode | Out-File "Program.cs"
 
 
-dotnet add reference "$path\services\$name.Services.csproj"
+  dotnet add reference "$path\services\$name.Services.csproj"
 
-    Pop-Location
+  Pop-Location
 
 }
 
 function Create-ServiceProject {
 
-    $folder =  "services";
-    dotnet new classlib -o "$path\$folder" --name "$name.Services"
+  $folder = "services";
+  dotnet new classlib -o "$path\$folder" --name "$name.Services"
+  
+  $projects += "$path\services\$name.Services.csproj"
 
 }
 function Create-DataAccessProjects {
 
-    $folder =  "dataAccess";
-    dotnet new classlib -o "$path\$folder\sql" --name "$name.DataAccess.SQL"
-    dotnet new classlib -o "$path\$folder\blob" --name "$name.DataAccess.Blob"
+  $folder = "dataAccess";
+
+  dotnet new classlib -o "$path\$folder\sql" --name "$name.DataAccess.SQL"
+  $projects += ($path + "dataAccess\sql\$name.DataAccess.SQL.csproj")
+
+  dotnet new classlib -o "$path\$folder\blob" --name "$name.DataAccess.Blob"
+  $projects += ($path + "dataAccess\blob\$name.DataAccess.Blob.csproj")
 
 
-    Set-Location "$path\$folder"
+  Set-Location "$path\$folder"
 
-    Push-Location
-    Set-Location "sql"
+  Push-Location
+  Set-Location "sql"
     
-    dotnet add reference "$path\services\$name.Services.csproj"
+  dotnet add reference "$path\services\$name.Services.csproj"
+
     
 
-    Pop-Location
+  Pop-Location
     
-    Push-Location
-    Set-Location "blob"
+  Push-Location
+  Set-Location "blob"
     
-    dotnet add reference "$path\services\$name.Services.csproj"
+  dotnet add reference "$path\services\$name.Services.csproj"
 
-    Pop-Location
+  Pop-Location
     
     
-    Pop-Location
+  Pop-Location
 
 }
 
 function Create-FrontendProjects {
 
-    $folder =  "frontend";
-    dotnet new razorclasslib -o "$path$folder\api" --name "$name.frontend.api"
-    dotnet new razorclasslib -o "$path$folder\presentation" --name "$name.frontend.presentation"
+  $folder = "frontend";
+
+  dotnet new razorclasslib -o "$path$folder\api" --name "$name.frontend.api"
+  $projects += ($path + "frontend\api\$name.frontend.api.csproj")
+
+  dotnet new razorclasslib -o "$path$folder\presentation" --name "$name.frontend.presentation"    
+  $projects += ($path + "frontend\presentation\$name.frontend.presentation.csproj")
 }
 
 
 function Create-RootApp {
 
-    $folder =  "app";
+  $folder = "EntryPoint";
 
-    Push-Location
-    dotnet new razor -o "$path\$folder" --name "$name.App"
+  Push-Location
+  dotnet new razor -o "$path\$folder" --name "$name.App"
 
-    Set-Location "$path\$folder"
+  Set-Location "$path\$folder"
 
-dotnet add reference "$path\services\$name.Services.csproj"
 
-dotnet add reference ($path + "dataAccess\sql\$name.DataAccess.SQL.csproj")
-
-dotnet add reference ($path + "dataAccess\blob\$name.DataAccess.Blob.csproj")
-
-dotnet add reference ($path + "frontend\api\$name.frontend.api.csproj")
-
-dotnet add reference ($path + "frontend\presentation\$name.frontend.presentation.csproj")
+  $projects | % {
+    dotnet add reference $_
+  }
 
 
 
-dotnet add package Swashbuckle.AspNetCore
 
 
-((Get-Content -path "$path$folder\Program.cs" -Raw) -replace 'builder.Services.AddRazorPages','cofffffeeeeee') | Write-Host
+
+  dotnet add package Swashbuckle.AspNetCore
 
 
-(Get-Content -path "$path$folder\Program.cs" -Raw) -replace 'builder.Services.AddRazorPages','builder.Services.AddRazorPages;' | Out-File  "$path$folder\Program.cs"
+  $token = 'builder.Services.AddRazorPages();'
+  $toAdd = '//hi'
 
 
-Pop-Location
+(Get-Content -path "Program.cs" -Raw).Replace( $token , $token + "`n" +  $toAdd) | Out-File  "Program.cs"
+
+
+  Pop-Location
 }
     
 
@@ -178,14 +173,13 @@ Push-Location
 Set-Location $path
 
 
-Setup-Template
-Create-ServiceProject
-Create-DataAccessProjects
+
+#Create-ServiceProject
+#Create-DataAccessProjects
 Create-RootApp
-Create-Tests
+#Create-Tests
 
 
 
 Pop-Location
-
 
