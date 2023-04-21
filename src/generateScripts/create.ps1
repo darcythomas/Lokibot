@@ -23,9 +23,36 @@ param (
   $name
 )
 
-    
+
+$author = "Darcy"
+
+
 
 $projects = @()
+
+function Setup-Template {
+
+$templateJson = @"
+    {
+        "`$schema": "http://json.schemastore.org/template",
+        "author": "$author",
+        "classifications": [ "Common", "Code" ],
+        "identity": "ExampleTemplate.StringExtensions",
+        "name": "Example templates: string extensions",
+        "shortName": "$name",
+        "tags": {
+          "language": "C#",
+          "type": "item"
+        }
+    }
+"@
+
+    $folder =  ".template.config";
+    mkdir $folder
+    $templateJson | Out-File "$path\$folder\template.json"
+
+}
+    
 
 
 
@@ -174,11 +201,11 @@ Set-Location $path
 
 
 
-#Create-ServiceProject
-#Create-DataAccessProjects
+Setup-Template
+Create-ServiceProject
+Create-DataAccessProjects
 Create-RootApp
-#Create-Tests
-
+Create-Tests
 
 
 Pop-Location
